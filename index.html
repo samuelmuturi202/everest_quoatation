@@ -1,0 +1,424 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Everest Damliners Tech - Quotation Generator</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- html2pdf.js for generating PDF -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <style>
+        @media print {
+            body, html {
+                background: #ffffff !important;
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+            }
+        }
+
+        /* Fixed A4 Page Size with Natural Top-to-Bottom Flow */
+        .pdf-page {
+            width: 794px;
+            height: 1123px;
+            padding: 40px 50px;
+            background-color: #ffffff !important;
+            color: #1a202c !important;
+            font-family: Arial, Helvetica, sans-serif;
+            box-sizing: border-box;
+            display: block; /* Removed flex space-between to allow continuous content flow */
+            margin: 0 auto;
+        }
+
+        /* Force pure white background everywhere in preview */
+        #quotation-preview,
+        #quotation-preview * {
+            background-color: #ffffff !important;
+            background: #ffffff !important;
+        }
+
+        #pv-total {
+            color: #059669 !important;
+        }
+
+        #pv-title-brand {
+            color: #0284c7 !important;
+        }
+
+        [contenteditable="true"]:hover {
+            outline: 1px dashed #10b981;
+            cursor: text;
+        }
+        [contenteditable="true"]:focus {
+            outline: 2px solid #059669;
+        }
+    </style>
+</head>
+<body class="bg-slate-100 min-h-screen pb-12">
+
+    <!-- Header Controls -->
+    <header class="bg-slate-900 text-white py-4 px-6 shadow-md mb-8">
+        <div class="max-w-7xl mx-auto flex justify-between items-center">
+            <h1 class="text-xl font-bold tracking-wide text-sky-400">EVEREST DAMLINERS TECH</h1>
+            <span class="text-xs text-slate-400">Full A4 Page PDF Generator</span>
+        </div>
+    </header>
+
+    <main class="max-w-7xl mx-auto px-4 grid grid-cols-1 lg:grid-cols-12 gap-8">
+        
+        <!-- FORM CONTROLS (Left Side) -->
+        <section class="lg:col-span-5 bg-white p-6 rounded-xl shadow-md border border-slate-200 space-y-6">
+            
+            <div class="space-y-3 border-b pb-4">
+                <h2 class="text-base font-bold text-slate-800">1. Select Service & Capacity</h2>
+                <div>
+                    <label class="block text-xs font-medium text-slate-600 mb-1">Service Type</label>
+                    <select id="serviceSelect" onchange="updateServiceReference()" class="w-full text-xs p-2.5 border rounded-lg focus:ring-2 focus:ring-emerald-500 outline-none bg-white font-medium">
+                        <option value="Corrugated steel water tank">1) Corrugated steel water tank</option>
+                        <option value="Plastic tank repair">2) Plastic tank repair</option>
+                        <option value="Underground water tank">3) Underground water tank</option>
+                        <option value="Concrete tank restoration">4) Concrete tank restoration</option>
+                        <option value="Mesh tank" selected>5) Mesh tank</option>
+                        <option value="Azolla ponds">6) Azolla ponds</option>
+                        <option value="Fish ponds">7) Fish ponds</option>
+                        <option value="Agricultural reservoirs">8) Agricultural reservoirs</option>
+                        <option value="Septic tanks lining">9) Septic tanks lining</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-medium text-slate-600 mb-1">Capacity (m³ / Meters Cubed)</label>
+                    <input type="number" id="serviceCapacity" value="50" oninput="updateServiceReference()" placeholder="e.g. 50" class="w-full text-xs p-2.5 border rounded-lg focus:ring-2 focus:ring-emerald-500 outline-none">
+                </div>
+            </div>
+
+            <div class="border-b pb-4">
+                <h2 class="text-base font-bold text-slate-800 mb-2">2. Quotation Format</h2>
+                <div class="grid grid-cols-2 gap-3">
+                    <button type="button" id="btn-detailed" onclick="setMode('detailed')" class="py-2.5 px-3 text-xs font-bold rounded-lg border-2 border-emerald-600 bg-emerald-50 text-emerald-700 transition text-center">
+                        Itemized Breakdown
+                    </button>
+                    <button type="button" id="btn-simple" onclick="setMode('simple')" class="py-2.5 px-3 text-xs font-bold rounded-lg border-2 border-slate-200 bg-white text-slate-600 hover:border-slate-300 transition text-center">
+                        Single Total Amount
+                    </button>
+                </div>
+            </div>
+
+            <div class="space-y-4">
+                <div class="flex justify-between items-center border-b pb-1">
+                    <h3 class="text-sm font-bold text-slate-700">Client Details</h3>
+                    <button type="button" onclick="generateNewQuoteNum()" class="text-[10px] font-bold text-emerald-600 hover:underline">Auto-Generate No.</button>
+                </div>
+                
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs font-medium text-slate-600 mb-1">Quote Number</label>
+                        <input type="text" id="quoteNumber" class="w-full text-xs p-2.5 border rounded-lg focus:ring-2 focus:ring-emerald-500 outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-slate-600 mb-1">Date</label>
+                        <input type="text" id="quoteDate" class="w-full text-xs p-2.5 border rounded-lg focus:ring-2 focus:ring-emerald-500 outline-none">
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-medium text-slate-600 mb-1">Client Name / Bill To</label>
+                    <input type="text" id="clientName" value="Mr Anthony Wachira" class="w-full text-xs p-2.5 border rounded-lg focus:ring-2 focus:ring-emerald-500 outline-none">
+                </div>
+
+                <div>
+                    <label class="block text-xs font-medium text-slate-600 mb-1">Client Location</label>
+                    <input type="text" id="clientLocation" value="Ol Kalou, Nyandarua county, Kenya" class="w-full text-xs p-2.5 border rounded-lg focus:ring-2 focus:ring-emerald-500 outline-none">
+                </div>
+
+                <div>
+                    <label class="block text-xs font-medium text-slate-600 mb-1">Attention / Contact</label>
+                    <input type="text" id="attention" value="Peter Mwangi (0795718644)" class="w-full text-xs p-2.5 border rounded-lg focus:ring-2 focus:ring-emerald-500 outline-none">
+                </div>
+
+                <div>
+                    <label class="block text-xs font-medium text-slate-600 mb-1">Reference</label>
+                    <input type="text" id="reference" value="Supply and installation for mesh tank (50 m³)" class="w-full text-xs p-2.5 border rounded-lg focus:ring-2 focus:ring-emerald-500 outline-none">
+                </div>
+            </div>
+
+            <div class="space-y-4">
+                <div class="flex justify-between items-center border-b pb-1">
+                    <h3 class="text-sm font-bold text-slate-700">Line Items</h3>
+                    <button type="button" onclick="addItem()" class="text-xs bg-emerald-600 text-white px-2.5 py-1 rounded hover:bg-emerald-700 transition">+ Add Item</button>
+                </div>
+                <div id="items-container" class="space-y-3"></div>
+            </div>
+
+            <div class="pt-4 border-t">
+                <button type="button" onclick="downloadPDF()" class="w-full bg-emerald-600 text-white font-bold py-3.5 rounded-lg hover:bg-emerald-700 transition text-sm shadow-md">
+                    Download Full Page A4 PDF
+                </button>
+            </div>
+        </section>
+
+        <!-- PREVIEW SECTION (Right Side) -->
+        <section class="lg:col-span-7 flex flex-col items-center overflow-x-auto">
+            <div class="shadow-xl rounded-lg overflow-hidden border border-slate-300 p-2 bg-white">
+                
+                <!-- PDF Sheet Target -->
+                <div id="quotation-preview" class="pdf-page">
+                    
+                    <!-- Header -->
+                    <div class="flex justify-between items-start border-b-2 border-slate-200 pb-4 mb-4">
+                        <div class="flex items-center space-x-4">
+                            <img id="pv-logo" src="LOGO.png" alt="Logo" class="w-16 h-16 object-contain">
+                            <div>
+                                <h1 id="pv-title-brand" class="text-xl font-black uppercase tracking-tight">EVEREST DAMLINERS TECH</h1>
+                                <p class="text-xs text-slate-600">Kikuyu, Kenya</p>
+                                <p class="text-xs text-slate-600">mwangipeter1691@gmail.com</p>
+                            </div>
+                        </div>
+                        <div class="text-right">
+                            <h2 class="text-3xl font-black tracking-wider text-slate-800">QUOTE</h2>
+                            <p class="text-xs font-bold mt-1 text-slate-700"><span>Quote Number:</span> <span id="pv-quoteNumber">QU-0045</span></p>
+                            <p class="text-xs font-bold text-slate-700"><span>Date:</span> <span id="pv-quoteDate">14 August 2026</span></p>
+                        </div>
+                    </div>
+
+                    <!-- Client Details -->
+                    <div class="grid grid-cols-2 gap-4 mb-4">
+                        <div class="p-3 border border-slate-300 rounded-lg">
+                            <p class="text-[10px] font-bold uppercase mb-1 text-slate-500">TO / BILL TO:</p>
+                            <p id="pv-clientName" class="font-bold text-sm text-slate-900">Mr Anthony Wachira</p>
+                            <p id="pv-clientLocation" class="text-xs text-slate-600">Ol Kalou, Nyandarua county, Kenya</p>
+                        </div>
+                        <div class="p-3 border border-slate-300 rounded-lg text-xs space-y-1 text-slate-700">
+                            <p><strong>Attention:</strong> <span id="pv-attention">Peter Mwangi (0795718644)</span></p>
+                            <p><strong>Service & Capacity:</strong> <span id="pv-serviceCap" class="font-bold">Mesh tank (50 m³)</span></p>
+                            <p><strong>Reference:</strong> <span id="pv-reference">Supply and installation for mesh tank (50 m³)</span></p>
+                        </div>
+                    </div>
+
+                    <!-- Items Table -->
+                    <table class="w-full border-collapse mb-4 text-xs text-left">
+                        <thead>
+                            <tr class="border-b-2 border-slate-300 font-bold uppercase text-[10px] text-slate-700">
+                                <th class="p-2 border border-slate-300">Description</th>
+                                <th class="p-2 border border-slate-300 text-center w-20">Quantity</th>
+                                <th class="p-2 border border-slate-300 text-right w-28">Unit Price</th>
+                                <th class="p-2 border border-slate-300 text-right w-32">Amount KES</th>
+                                <th class="p-1 border border-slate-300 text-center w-8 no-print-action"></th>
+                            </tr>
+                        </thead>
+                        <tbody id="pv-items-body" class="text-slate-800">
+                            <!-- Items inserted here -->
+                        </tbody>
+                    </table>
+
+                    <!-- Totals Block immediately following table -->
+                    <div class="flex justify-end mb-6">
+                        <div class="w-1/2 space-y-1.5 text-xs">
+                            <div class="flex justify-between border-b border-slate-200 pb-1 text-slate-600">
+                                <span>Subtotal</span>
+                                <span class="font-semibold" id="pv-subtotal">KES 0.00</span>
+                            </div>
+                            <div class="flex justify-between font-black text-base border-b-2 border-slate-800 pb-1 text-slate-900">
+                                <span>TOTAL KES</span>
+                                <span id="pv-total">KES 0.00</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Footer / Terms & Conditions -->
+                    <div class="border-t border-slate-300 pt-3 text-[10px] leading-relaxed text-slate-600">
+                        <p class="font-bold uppercase mb-1 text-slate-800">Terms & Conditions:</p>
+                        <ul class="list-disc pl-4 space-y-0.5">
+                            <li>80% payment is required to start the work and 20% balance to be paid after work completion.</li>
+                            <li>Customer to provide the following: enough casual workers, ladders, and electric power.</li>
+                        </ul>
+                    </div>
+
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <script>
+        let mode = 'detailed';
+        let items = [
+            { desc: '1mm liner', qty: '180', unitPrice: 480 },
+            { desc: 'Welding Rod', qty: '1', unitPrice: 10000 },
+            { desc: 'Mesh', qty: '2', unitPrice: 45000 },
+            { desc: 'Transport', qty: '1', unitPrice: 30000 },
+            { desc: 'Supporters', qty: '26', unitPrice: 1500 }
+        ];
+
+        function updateServiceReference() {
+            const service = document.getElementById('serviceSelect').value;
+            const capacity = document.getElementById('serviceCapacity').value;
+            const capStr = capacity ? ` (${capacity} m³)` : '';
+            
+            document.getElementById('pv-serviceCap').innerText = `${service}${capStr}`;
+            const refInput = document.getElementById('reference');
+            refInput.value = `Supply and installation for ${service.toLowerCase()}${capStr}`;
+            document.getElementById('pv-reference').innerText = refInput.value;
+        }
+
+        function generateNewQuoteNum() {
+            let currentCount = parseInt(localStorage.getItem('quoteCounter') || '45');
+            const paddedNum = String(currentCount).padStart(4, '0');
+            const quoteStr = `QU-${paddedNum}`;
+            document.getElementById('quoteNumber').value = quoteStr;
+            document.getElementById('pv-quoteNumber').innerText = quoteStr;
+        }
+
+        function setMode(selectedMode) {
+            mode = selectedMode;
+            if (mode === 'simple') {
+                const serviceName = document.getElementById('serviceSelect').value;
+                const capacity = document.getElementById('serviceCapacity').value;
+                items = [{ desc: `${serviceName} (${capacity} m³) - Complete Installation`, qty: '1', unitPrice: 255400 }];
+            } else {
+                items = [
+                    { desc: '1mm liner', qty: '180', unitPrice: 480 },
+                    { desc: 'Welding Rod', qty: '1', unitPrice: 10000 },
+                    { desc: 'Mesh', qty: '2', unitPrice: 45000 },
+                    { desc: 'Transport', qty: '1', unitPrice: 30000 },
+                    { desc: 'Supporters', qty: '26', unitPrice: 1500 }
+                ];
+            }
+            renderFormItems();
+            updatePreview();
+        }
+
+        function renderFormItems() {
+            const container = document.getElementById('items-container');
+            container.innerHTML = '';
+            items.forEach((item, index) => {
+                const div = document.createElement('div');
+                div.className = 'p-3 bg-slate-50 border rounded-lg space-y-2';
+                div.innerHTML = `
+                    <div class="flex justify-between items-center">
+                        <span class="text-[10px] font-bold text-slate-400">ITEM ${index + 1}</span>
+                        ${items.length > 1 ? `<button type="button" onclick="removeItem(${index})" class="text-xs text-red-500 font-bold hover:underline">Remove</button>` : ''}
+                    </div>
+                    <input type="text" value="${item.desc}" oninput="updateItem(${index}, 'desc', this.value)" class="w-full text-xs p-2 border rounded">
+                    <div class="grid grid-cols-2 gap-2">
+                        <input type="text" value="${item.qty}" oninput="updateItem(${index}, 'qty', this.value)" class="w-full text-xs p-2 border rounded">
+                        <input type="number" value="${item.unitPrice}" oninput="updateItem(${index}, 'unitPrice', this.value)" class="w-full text-xs p-2 border rounded">
+                    </div>
+                `;
+                container.appendChild(div);
+            });
+        }
+
+        function addItem() {
+            items.push({ desc: 'New Service Item', qty: '1', unitPrice: 0 });
+            renderFormItems();
+            updatePreview();
+        }
+
+        function removeItem(index) {
+            items.splice(index, 1);
+            renderFormItems();
+            updatePreview();
+        }
+
+        function updateItem(index, field, value) {
+            items[index][field] = field === 'unitPrice' ? (parseFloat(value) || 0) : value;
+            updatePreview();
+        }
+
+        function syncField(id) {
+            const input = document.getElementById(id);
+            const pv = document.getElementById('pv-' + id);
+            if (input && pv) {
+                input.addEventListener('input', () => { pv.innerText = input.value; });
+            }
+        }
+
+        ['quoteNumber', 'quoteDate', 'clientName', 'clientLocation', 'attention', 'reference'].forEach(syncField);
+
+        function updatePreview() {
+            const tbody = document.getElementById('pv-items-body');
+            tbody.innerHTML = '';
+            let total = 0;
+
+            items.forEach((item, index) => {
+                const qtyNum = parseFloat(item.qty) || 1;
+                const lineTotal = item.unitPrice * qtyNum;
+                total += lineTotal;
+
+                const tr = document.createElement('tr');
+                tr.className = 'border-b border-slate-200';
+                tr.innerHTML = `
+                    <td class="p-2 border border-slate-300" contenteditable="true" onblur="items[${index}].desc=this.innerText; renderFormItems();">${item.desc}</td>
+                    <td class="p-2 border border-slate-300 text-center" contenteditable="true" onblur="items[${index}].qty=this.innerText; renderFormItems();">${item.qty}</td>
+                    <td class="p-2 border border-slate-300 text-right">${item.unitPrice.toLocaleString('en-US', {minimumFractionDigits: 2})}</td>
+                    <td class="p-2 border border-slate-300 text-right font-semibold">${lineTotal.toLocaleString('en-US', {minimumFractionDigits: 2})}</td>
+                    <td class="p-1 border border-slate-300 text-center no-print-action">
+                        ${items.length > 1 ? `<button type="button" onclick="removeItem(${index})" class="text-slate-400 hover:text-red-500 font-bold px-1">✕</button>` : ''}
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+
+            document.getElementById('pv-subtotal').innerText = 'KES ' + total.toLocaleString('en-US', {minimumFractionDigits: 2});
+            document.getElementById('pv-total').innerText = 'KES ' + total.toLocaleString('en-US', {minimumFractionDigits: 2});
+        }
+
+        function downloadPDF() {
+            const element = document.getElementById('quotation-preview');
+
+            window.scrollTo(0, 0);
+
+            const wrapper = document.createElement('div');
+            wrapper.style.position = 'absolute';
+            wrapper.style.top = '0';
+            wrapper.style.left = '0';
+            wrapper.style.width = '794px';
+            wrapper.style.height = '1123px';
+            wrapper.style.backgroundColor = '#ffffff';
+            wrapper.style.zIndex = '999999';
+
+            const clone = element.cloneNode(true);
+
+            const noPrint = clone.querySelectorAll('.no-print-action');
+            noPrint.forEach(el => el.remove());
+
+            wrapper.appendChild(clone);
+            document.body.appendChild(wrapper);
+
+            const opt = {
+                margin: 0,
+                filename: `${document.getElementById('quoteNumber').value}_Quotation.pdf`,
+                image: { type: 'jpeg', quality: 1.0 },
+                html2canvas: { 
+                    scale: 2, 
+                    backgroundColor: '#ffffff',
+                    useCORS: true,
+                    scrollX: 0,
+                    scrollY: 0,
+                    x: 0,
+                    y: 0,
+                    width: 794,
+                    height: 1123,
+                    windowWidth: 794,
+                    windowHeight: 1123
+                },
+                jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+            };
+
+            html2pdf().set(opt).from(clone).save().then(() => {
+                document.body.removeChild(wrapper);
+            });
+        }
+
+        window.addEventListener('DOMContentLoaded', () => {
+            const today = new Date();
+            document.getElementById('quoteDate').value = today.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
+            document.getElementById('pv-quoteDate').innerText = document.getElementById('quoteDate').value;
+            generateNewQuoteNum();
+            updateServiceReference();
+            renderFormItems();
+            updatePreview();
+        });
+    </script>
+</body>
+</html>
